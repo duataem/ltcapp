@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b5085">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="長照試算">
+<title>長照服務確認單試算</title>
+<link id="pwa-manifest" rel="manifest">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --P:#0b5085;--PL:#1a6bbf;--PD:#083860;
+  --A:#d4720a;--OK:#1a7a34;--ERR:#c0392b;
+  --BG:#edf2f7;--CARD:#fff;--T:#1a2530;--T2:#5a7080;
+  --BD:#ccd8e4;--DIS:#aabbc8;
+  --NAV:72px;--HDR:56px;
+}
+html,body{height:100%;font-family:-apple-system,'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(--BG);color:var(--T);font-size:18px;-webkit-font-smoothing:antialiased;}
+/* 底部 padding 需包含固定 nav + Android 系統導覽列安全區域 */
+body{padding-bottom:calc(var(--NAV) + env(safe-area-inset-bottom, 0px) + 32px);}
+input[type=number]{-moz-appearance:textfield;}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+
+/* ── HEADER ── */
+.hdr{position:sticky;top:0;z-index:200;background:var(--P);color:#fff;height:var(--HDR);display:flex;align-items:center;padding:0 14px;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.28);}
+.hdr h1{font-size:20px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hdr-badge{background:rgba(255,255,255,.2);border-radius:12px;padding:4px 11px;font-size:14px;font-weight:600;white-space:nowrap;}
+
+/* ── BUDGET BAR ── */
+.bbar{background:var(--PD);color:#fff;padding:9px 10px 11px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.bc{background:rgba(255,255,255,.13);border-radius:9px;padding:8px 9px;text-align:center;}
+.bc .lbl{font-size:13px;opacity:.72;margin-bottom:2px;}
+.bc .amt{font-size:19px;font-weight:800;letter-spacing:-.3px;}
+.bc .sub{font-size:12px;opacity:.62;margin-top:2px;min-height:15px;}
+.bc.over .amt{color:#ffaaaa;}
+.bc.ok .amt{color:#a0ffa8;}
+
+/* ── VIEW SYSTEM ── */
+.view{display:none;}
+.view.active{display:block;padding-bottom:100px;}
+
+/* ── SETTINGS ── */
+.s-wrap{padding:9px 9px 0;}
+.s-card{background:var(--CARD);border-radius:11px;padding:14px 15px;margin-bottom:9px;box-shadow:0 1px 5px rgba(0,0,0,.08);}
+.s-lbl{font-size:14px;font-weight:700;color:var(--T2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:11px;}
+.pills{display:flex;gap:7px;flex-wrap:wrap;}
+.pill{padding:10px 15px;border-radius:20px;border:1.5px solid var(--BD);font-size:15px;font-weight:500;color:var(--T2);cursor:pointer;background:#fff;transition:all .15s;-webkit-tap-highlight-color:transparent;text-align:center;line-height:1.3;}
+.pill small{display:block;font-size:13px;opacity:.7;}
+.pill.sel{background:var(--P);border-color:var(--P);color:#fff;}
+.pill.sel small{opacity:.85;}
+.tog-row{display:flex;align-items:center;gap:12px;}
+.tog-info{flex:1;}
+.tog-title{font-size:18px;font-weight:500;color:var(--T);}
+.tog-sub{font-size:14px;color:var(--T2);margin-top:3px;}
+.sw{position:relative;width:52px;height:30px;flex-shrink:0;}
+.sw input{opacity:0;width:0;height:0;}
+.sw-track{position:absolute;inset:0;background:#bbb;border-radius:15px;cursor:pointer;transition:background .2s;}
+.sw-track::after{content:'';position:absolute;width:24px;height:24px;border-radius:50%;background:#fff;left:3px;top:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+.sw input:checked+.sw-track{background:var(--P);}
+.sw input:checked+.sw-track::after{transform:translateX(22px);}
+.reset-btn{display:block;margin:0 auto;background:none;border:1px solid var(--BD);border-radius:9px;padding:10px 24px;color:var(--T2);font-size:15px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+
+/* ── ACCORDION ── */
+.acc{margin:9px 9px 0;background:var(--CARD);border-radius:11px;overflow:hidden;box-shadow:0 1px 5px rgba(0,0,0,.08);}
+.acc-hdr{display:flex;align-items:center;padding:14px 14px;cursor:pointer;user-select:none;border-bottom:1px solid transparent;-webkit-tap-highlight-color:transparent;transition:background .12s;}
+.acc-hdr:active{background:#f4f7fb;}
+.acc-hdr.open{border-bottom-color:var(--BD);}
+.acc-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:11px;flex-shrink:0;}
+.acc-titles{flex:1;min-width:0;}
+.acc-title{font-size:18px;font-weight:700;}
+.acc-sub{font-size:14px;color:var(--T2);margin-top:3px;}
+.acc-badge{font-size:14px;font-weight:700;padding:4px 11px;border-radius:11px;background:#e3eefa;color:var(--P);margin-right:6px;white-space:nowrap;}
+.acc-badge.used{background:#e3eefa;color:var(--P);}
+.acc-badge.over{background:#fde8e8;color:var(--ERR);}
+.acc-chev{font-size:14px;color:var(--T2);transition:transform .2s;}
+.acc-hdr.open .acc-chev{transform:rotate(180deg);}
+.acc-body{display:none;}
+.acc-body.open{display:block;}
+
+/* ── SERVICE ROW ── */
+.svc-row{display:flex;align-items:flex-start;padding:13px 14px;border-bottom:1px solid #eef2f7;gap:10px;transition:background .12s;}
+.svc-row:last-child{border-bottom:none;}
+.svc-row.on{background:#f0f7ff;}
+.svc-row.foreign-off{opacity:.35;pointer-events:none;}
+.svc-chk{width:28px;height:28px;flex-shrink:0;accent-color:var(--P);cursor:pointer;margin-top:3px;}
+.svc-info{flex:1;min-width:0;}
+.svc-code{font-size:14px;font-weight:700;color:var(--P);font-family:monospace;letter-spacing:.3px;}
+.svc-name{font-size:17px;color:var(--T);white-space:normal;word-break:break-word;line-height:1.3;}
+.svc-price{font-size:13px;color:var(--T2);margin-top:2px;}
+.shared-tag{display:inline-block;background:#fff3cd;color:#7c5a00;font-size:12px;font-weight:600;padding:1px 6px;border-radius:4px;margin-left:4px;}
+.svc-right{display:flex;align-items:center;gap:7px;flex-shrink:0;margin-top:3px;}
+.calc-btn{width:40px;height:44px;border:none;background:var(--PL);color:#fff;border-radius:8px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;}
+.calc-btn:disabled{background:#ccc;}
+.u-inp{width:62px;height:44px;text-align:center;border:1.5px solid var(--BD);border-radius:8px;font-size:18px;font-weight:700;color:var(--T);background:#fff;padding:0 2px;transition:border-color .15s;}
+.u-inp:focus{outline:none;border-color:var(--P);}
+.u-inp:disabled{background:#f3f5f8;color:var(--DIS);}
+.svc-amt{width:78px;text-align:right;font-size:15px;font-weight:700;color:var(--P);flex-shrink:0;}
+.svc-amt.z{color:var(--DIS);font-weight:400;}
+.ba09-opts{display:flex;gap:12px;margin-top:6px;font-size:13px;align-items:center;flex-wrap:wrap;}
+.ba09-opts label{display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--T2);}
+.cc01-price{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:14px;color:var(--T2);}
+.cc01-price input{width:96px;height:34px;border:1px solid var(--BD);border-radius:6px;padding:0 8px;font-size:14px;text-align:right;}
+
+/* ── FOREIGN ALERT ── */
+.f-alert{margin:9px 9px 0;background:#fff9e6;border:1px solid #f5c842;border-radius:10px;padding:11px 14px;font-size:15px;color:#6b4e00;display:none;}
+.f-alert.show{display:block;}
+
+/* ── TRANSPORT ── */
+.d-card{margin:9px 9px 0;background:var(--CARD);border-radius:11px;padding:16px;box-shadow:0 1px 5px rgba(0,0,0,.08);}
+.d-lbl{font-size:14px;font-weight:700;color:var(--T2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
+.d-meta{font-size:15px;color:var(--T2);margin-bottom:16px;line-height:1.7;}
+.trip-row{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.trip-lbl{flex:1;font-size:18px;font-weight:500;}
+.stepper{display:flex;align-items:center;border:1.5px solid var(--BD);border-radius:9px;overflow:hidden;}
+.stbtn{width:46px;height:46px;border:none;background:#f2f5f8;font-size:22px;cursor:pointer;color:var(--T);display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;}
+.stbtn:active{background:#e3e8ee;}
+.stval{width:52px;height:46px;text-align:center;font-size:19px;font-weight:700;color:var(--P);border:none;border-left:1.5px solid var(--BD);border-right:1.5px solid var(--BD);background:#fff;}
+.d-result{background:#f3f8ff;border-radius:10px;padding:14px 15px;}
+.d-rrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:16px;}
+.d-rrow .dv{font-weight:700;color:var(--P);}
+.d-rrow.cop .dv{color:var(--A);}
+.d-rrow.warn{font-size:14px;color:var(--ERR);}
+.d-rrow.warn span{display:block;}
+
+/* ── BOTTOM NAV ── */
+.bnav{position:fixed;bottom:0;left:0;right:0;height:var(--NAV);background:#fff;border-top:1px solid var(--BD);display:flex;z-index:200;box-shadow:0 -2px 8px rgba(0,0,0,.07);padding-bottom:env(safe-area-inset-bottom,0);}
+.nitem{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--T2);font-size:13px;font-weight:500;border:none;background:none;-webkit-tap-highlight-color:transparent;padding:4px 0;}
+.nitem .ni{font-size:24px;line-height:1;transition:transform .15s;}
+.nitem.active{color:var(--P);}
+.nitem.active .ni{transform:translateY(-2px);}
+
+/* ── CALC MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-end;touch-action:none;}
+.overlay.show{display:flex;}
+.sheet{background:#fff;border-radius:18px 18px 0 0;width:100%;animation:su .22s ease;padding-bottom:env(safe-area-inset-bottom,0);}
+@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sh-handle{width:38px;height:4px;background:#ddd;border-radius:2px;margin:11px auto 0;}
+.sh-hdr{padding:16px 20px 14px;border-bottom:1px solid var(--BD);}
+.sh-title{font-size:19px;font-weight:700;}
+.sh-sub{font-size:14px;color:var(--T2);margin-top:4px;}
+.sh-body{padding:20px 20px 14px;}
+.cr{display:flex;align-items:center;margin-bottom:20px;gap:12px;}
+.cr-lbl{flex:1;font-size:18px;font-weight:500;}
+.cr-unit{font-size:15px;color:var(--T2);}
+.calc-res{background:var(--P);color:#fff;border-radius:13px;padding:18px;text-align:center;margin-bottom:14px;}
+.cr-big{font-size:44px;font-weight:800;}
+.cr-lbl2{font-size:15px;opacity:.75;margin-top:5px;}
+.cr-formula{font-size:14px;opacity:.55;margin-top:5px;}
+.sh-foot{padding:0 20px 22px;display:flex;gap:10px;}
+.btn-cancel{flex:1;height:52px;border:1.5px solid var(--BD);background:#fff;border-radius:11px;font-size:17px;font-weight:600;color:var(--T2);cursor:pointer;}
+.btn-apply{flex:2;height:52px;border:none;background:var(--P);border-radius:11px;font-size:17px;font-weight:700;color:#fff;cursor:pointer;}
+
+/* ── COP DETAIL PANEL ── */
+.cop-toggle{width:100%;background:rgba(255,255,255,.10);border:none;color:rgba(255,255,255,.85);font-size:14px;font-weight:600;padding:8px 10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;letter-spacing:.3px;-webkit-tap-highlight-color:transparent;}
+.cop-toggle .chv{transition:transform .2s;display:inline-block;}
+.cop-toggle.open .chv{transform:rotate(180deg);}
+.cop-detail{background:#fff;border-top:2px solid var(--P);box-shadow:0 3px 10px rgba(0,0,0,.12);display:none;}
+.cop-detail.show{display:block;}
+.cop-detail-inner{padding:13px 14px;}
+.cd-row{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;font-size:15px;border-bottom:1px dashed #eef2f7;}
+.cd-row:last-child{border-bottom:none;}
+.cd-row .cd-lbl{color:var(--T2);flex:1;}
+.cd-row .cd-val{font-weight:700;color:var(--T);white-space:nowrap;margin-left:8px;text-align:right;}
+.cd-row .cd-formula{font-size:13px;color:var(--T2);margin-top:2px;}
+.cd-section{margin-bottom:9px;background:#f5f8fc;border-radius:9px;padding:9px 11px;}
+.cd-section-title{font-size:13px;font-weight:700;color:var(--P);text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px;}
+.cd-excess{background:#fff3cd;border-radius:6px;padding:6px 9px;font-size:14px;color:#7c5a00;margin:5px 0;display:flex;justify-content:space-between;gap:8px;}
+.cd-excess .cv{font-weight:700;color:var(--ERR);white-space:nowrap;}
+.cd-total{background:var(--P);color:#fff;border-radius:10px;padding:13px 15px;display:flex;justify-content:space-between;align-items:center;margin-top:9px;}
+.cd-total .ct-lbl{font-size:15px;font-weight:600;}
+.cd-total .ct-val{font-size:24px;font-weight:800;}
+.cd-na{text-align:center;padding:16px;font-size:15px;color:var(--T2);}
+
+/* ── MISC ── */
+.no-setup{text-align:center;padding:48px 20px;color:var(--T2);}
+.no-setup .ico{font-size:48px;margin-bottom:12px;}
+.no-setup p{font-size:16px;line-height:1.7;}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<div class="hdr">
+  <h1>長照服務確認單試算</h1>
+  <div class="hdr-badge" id="hdr-cat">請設定</div>
+</div>
+
+<!-- ═══ BUDGET BAR ═══ -->
+<div class="bbar">
+  <div class="bc" id="bc-card">
+    <div class="lbl">B+C 已用/額度</div>
+    <div class="amt" id="bc-amt">$0</div>
+    <div class="sub" id="bc-sub">請先設定</div>
+  </div>
+  <div class="bc" id="g-card">
+    <div class="lbl">G 喘息 已用/額度</div>
+    <div class="amt" id="g-amt">$0</div>
+    <div class="sub" id="g-sub">請先設定</div>
+  </div>
+  <div class="bc" id="cop-card">
+    <div class="lbl">合計自付額</div>
+    <div class="amt" id="cop-amt">$0</div>
+    <div class="sub" id="cop-sub">—</div>
+  </div>
+</div>
+<button class="cop-toggle" id="cop-toggle-btn" onclick="togCopDetail()">
+  📋 自付額計算明細 <span class="chv">▼</span>
+</button>
+<div class="cop-detail" id="cop-detail">
+  <div class="cop-detail-inner" id="cop-detail-inner">
+    <div class="cd-na">請先設定等級與身分別</div>
+  </div>
+</div>
+
+<!-- ═══ VIEWS ═══ -->
+
+<!-- VIEW: 設定 -->
+<div class="view active" id="v-set">
+  <div class="s-wrap">
+    <div class="s-card">
+      <div class="s-lbl">失能等級 / 照顧及專業服務給付額度</div>
+      <div class="pills" id="lvl-pills">
+        <div class="pill" data-lv="2" onclick="setLevel(2)">第二級<small>$10,020</small></div>
+        <div class="pill" data-lv="3" onclick="setLevel(3)">第三級<small>$15,460</small></div>
+        <div class="pill" data-lv="4" onclick="setLevel(4)">第四級<small>$18,580</small></div>
+        <div class="pill" data-lv="5" onclick="setLevel(5)">第五級<small>$24,100</small></div>
+        <div class="pill" data-lv="6" onclick="setLevel(6)">第六級<small>$28,070</small></div>
+        <div class="pill" data-lv="7" onclick="setLevel(7)">第七級<small>$32,090</small></div>
+        <div class="pill" data-lv="8" onclick="setLevel(8)">第八級<small>$36,180</small></div>
+      </div>
+    </div>
+    <div class="s-card">
+      <div class="s-lbl">社會福利身分別（部分負擔）</div>
+      <div class="pills" id="cat-pills">
+        <div class="pill" data-c="3" onclick="setCat(3)">第三類<small>B/C/G 16%</small></div>
+        <div class="pill" data-c="2" onclick="setCat(2)">第二類<small>B/C/G 5%</small></div>
+        <div class="pill" data-c="1" onclick="setCat(1)">第一類<small>B/C/G 0%</small></div>
+      </div>
+    </div>
+    <div class="s-card">
+      <div class="tog-row">
+        <div class="tog-info">
+          <div class="tog-title">聘僱外籍看護</div>
+          <div class="tog-sub">⚠ 額度上限 30%，且不可使用 BA 碼別</div>
+        </div>
+        <label class="sw">
+          <input type="checkbox" id="tog-foreign" onchange="setForeign(this.checked)">
+          <span class="sw-track"></span>
+        </label>
+      </div>
+    </div>
+    <div class="s-card" style="padding:11px 15px;">
+      <button class="reset-btn" onclick="doReset()">🔄 重設所有服務項目</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW: B碼 -->
+<div class="view" id="v-b">
+  <div class="f-alert" id="f-alert">
+    ⚠️ <strong>聘僱外籍看護：</strong>BA 碼已停用。B+C 月額度上限 30% = $<span id="f-limit">0</span>
+  </div>
+
+  <!-- BA -->
+  <div class="acc" id="acc-ba">
+    <div class="acc-hdr" onclick="togAcc('ba')">
+      <div class="acc-icon" style="background:#e6effe;">🏠</div>
+      <div class="acc-titles">
+        <div class="acc-title">BA 居家照顧服務</div>
+        <div class="acc-sub">到宅服務（28 項）</div>
+      </div>
+      <div class="acc-badge" id="bdg-ba">$0</div>
+      <div class="acc-chev">▼</div>
+    </div>
+    <div class="acc-body" id="bod-ba"></div>
+  </div>
+
+  <!-- BB -->
+  <div class="acc" id="acc-bb">
+    <div class="acc-hdr" onclick="togAcc('bb')">
+      <div class="acc-icon" style="background:#e6fef0;">☀️</div>
+      <div class="acc-titles">
+        <div class="acc-title">BB 日間照顧</div>
+        <div class="acc-sub">日照中心（14 項）</div>
+      </div>
+      <div class="acc-badge" id="bdg-bb">$0</div>
+      <div class="acc-chev">▼</div>
+    </div>
+    <div class="acc-body" id="bod-bb"></div>
+  </div>
+
+  <!-- BC -->
+  <div class="acc" id="acc-bc">
+    <div class="acc-hdr" onclick="togAcc('bc')">
+      <div class="acc-icon" style="background:#fff4e6;">🏡</div>
+      <div class="acc-titles">
+        <div class="acc-title">BC 家庭托顧</div>
+        <div class="acc-sub">家托服務（14 項）</div>
+      </div>
+      <div class="acc-badge" id="bdg-bc">$0</div>
+      <div class="acc-chev">▼</div>
+    </div>
+    <div class="acc-body" id="bod-bc"></div>
+  </div>
+
+  <!-- BD -->
+  <div class="acc" id="acc-bd">
+    <div class="acc-hdr" onclick="togAcc('bd')">
+      <div class="acc-icon" style="background:#f2e6ff;">🏢</div>
+      <div class="acc-titles">
+        <div class="acc-title">BD 社區式服務</div>
+        <div class="acc-sub">社區照顧（3 項）</div>
+      </div>
+      <div class="acc-badge" id="bdg-bd">$0</div>
+      <div class="acc-chev">▼</div>
+    </div>
+    <div class="acc-body" id="bod-bd"></div>
+  </div>
+</div>
+
+<!-- VIEW: C碼 -->
+<div class="view" id="v-c">
+  <div class="acc" id="acc-c" style="margin-top:9px;">
+    <div class="acc-hdr open" onclick="togAcc('c')">
+      <div class="acc-icon" style="background:#ffe8e8;">💊</div>
+      <div class="acc-titles">
+        <div class="acc-title">C 照顧及專業服務</div>
+        <div class="acc-sub">與 B 碼共用額度（8 項）</div>
+      </div>
+      <div class="acc-badge" id="bdg-c">$0</div>
+      <div class="acc-chev">▼</div>
+    </div>
+    <div class="acc-body open" id="bod-c"></div>
+  </div>
+</div>
+
+<!-- VIEW: G碼 -->
+<div class="view" id="v-g">
+  <div class="acc" id="acc-g" style="margin-top:9px;">
+    <div class="acc-hdr open" onclick="togAcc('g')">
+      <div class="acc-icon" style="background:#e6f8ff;">💝</div>
+      <div class="acc-titles">
+        <div class="acc-title">G 喘息服務</div>
+        <div class="acc-sub">獨立喘息額度（6 項）</div>
+      </div>
+      <div class="acc-badge" id="bdg-g">$0</div>
+      <div class="acc-chev">▼</div>
+    </div>
+    <div class="acc-body open" id="bod-g"></div>
+  </div>
+</div>
+
+<!-- VIEW: D交通 -->
+<div class="view" id="v-d">
+  <div class="d-card">
+    <div class="d-lbl">D 交通接送服務（大林地區）</div>
+    <div class="d-meta">
+      每趟原價 <strong>$230</strong>　｜　月額度 <strong>$1,840</strong>（最多 8 趟）<br>
+      自付比例：第三類 <strong>27%</strong> ／ 第二類 <strong>9%</strong> ／ 第一類 <strong>0%</strong>
+    </div>
+    <div class="trip-row">
+      <div class="trip-lbl">本月趟次</div>
+      <div class="stepper">
+        <button class="stbtn" onclick="chgTrip(-1)">－</button>
+        <input class="stval" type="number" id="trip-n" value="0" min="0" onchange="setTrip(+this.value||0)">
+        <button class="stbtn" onclick="chgTrip(1)">＋</button>
+      </div>
+      <div style="font-size:15px;color:var(--T2);">趟</div>
+    </div>
+    <div class="d-result" id="d-result" style="display:none;">
+      <div class="d-rrow"><span>原始費用</span><span class="dv" id="dt-total">$0</span></div>
+      <div class="d-rrow cop"><span>自付額（<span id="dt-pct">—</span>）</span><span class="dv" id="dt-cop">$0</span></div>
+      <div class="d-rrow"><span>政府補助</span><span class="dv" id="dt-gov">$0</span></div>
+      <div class="d-rrow warn" id="dt-warn" style="display:none;"><span>⚠ 超出月額度 $1,840，超出部分由個案自行負擔</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BOTTOM NAV ═══ -->
+<nav class="bnav">
+  <button class="nitem active" id="n-set" onclick="goView('set')"><span class="ni">⚙️</span>設定</button>
+  <button class="nitem" id="n-b" onclick="goView('b')"><span class="ni">🏠</span>B碼</button>
+  <button class="nitem" id="n-c" onclick="goView('c')"><span class="ni">💊</span>C碼</button>
+  <button class="nitem" id="n-g" onclick="goView('g')"><span class="ni">💝</span>G碼</button>
+  <button class="nitem" id="n-d" onclick="goView('d')"><span class="ni">🚗</span>D交通</button>
+</nav>
+
+<!-- ═══ CALC MODAL ═══ -->
+<div class="overlay" id="calc-overlay">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-hdr">
+      <div class="sh-title" id="sh-name">單位試算</div>
+      <div class="sh-sub" id="sh-code"></div>
+    </div>
+    <div class="sh-body">
+      <div class="cr">
+        <div class="cr-lbl">每天服務次數</div>
+        <div class="stepper">
+          <button class="stbtn" onclick="stepC('t',-1)">－</button>
+          <input class="stval" type="number" id="c-times" value="1" min="1" max="10" oninput="calcRes()">
+          <button class="stbtn" onclick="stepC('t',1)">＋</button>
+        </div>
+        <div class="cr-unit">次</div>
+      </div>
+      <div class="cr">
+        <div class="cr-lbl">每週服務天數</div>
+        <div class="stepper">
+          <button class="stbtn" onclick="stepC('d',-1)">－</button>
+          <input class="stval" type="number" id="c-days" value="3" min="1" max="7" oninput="calcRes()">
+          <button class="stbtn" onclick="stepC('d',1)">＋</button>
+        </div>
+        <div class="cr-unit">天</div>
+      </div>
+      <div class="calc-res">
+        <div class="cr-big" id="cr-val">—</div>
+        <div class="cr-lbl2">月使用單位數</div>
+        <div class="cr-formula" id="cr-formula"></div>
+      </div>
+    </div>
+    <div class="sh-foot">
+      <button class="btn-cancel" onclick="closeCalc()">取消</button>
+      <button class="btn-apply" onclick="applyCalc()">✔ 套用並勾選</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// DATA DEFINITIONS
+// ════════════════════════════════════════════
+const LVL={
+  2:{budget:10020,name:'第二級'},3:{budget:15460,name:'第三級'},
+  4:{budget:18580,name:'第四級'},5:{budget:24100,name:'第五級'},
+  6:{budget:28070,name:'第六級'},7:{budget:32090,name:'第七級'},
+  8:{budget:36180,name:'第八級'}
+};
+const COPAY={1:0,2:.05,3:.16};
+const TCOPAY={1:0,2:.09,3:.27};
+const TPRICE=230, TBGT=1840;
+
+// BA15-2 & BA16-2 共用：政府補助50%，以補助後金額計算額度
+// BA15 $195 → 共用補助50% 計算額=$98
+// BA16 $130 → 共用補助50% 計算額=$65
+const SVC={
+  BA:[
+    {code:'BA01',name:'基本身體清潔',price:260},
+    {code:'BA02',name:'基本日常照顧',price:195},
+    {code:'BA03',name:'測量生命徵象',price:35},
+    {code:'BA04',name:'協助餵食或灌食',price:130},
+    {code:'BA05',name:'餐食照顧',price:310},
+    {code:'BA07',name:'協助沐浴及洗頭',price:325},
+    {code:'BA08',name:'足部照護',price:500},
+    {code:'BA09',name:'到宅沐浴車服務',price:2200,ba09:true},
+    {code:'BA10',name:'翻身拍背',price:155},
+    {code:'BA11',name:'肢體關節活動',price:195},
+    {code:'BA12',name:'協助上(下)樓梯',price:130},
+    {code:'BA13',name:'陪同外出',price:195},
+    {code:'BA14',name:'陪同就醫',price:685},
+    {code:'BA15-1',name:'家務協助－自用',price:195},
+    {code:'BA15-2',name:'家務協助－共用',price:98,shared50:true,origPrice:195,
+     fixedCop:{1:97,2:101,3:112}},
+    {code:'BA16-1',name:'代購或代領或代送－自用',price:130},
+    {code:'BA16-2',name:'代購或代領或代送－共用',price:65,shared50:true,origPrice:130,
+     fixedCop:{1:65,2:68,3:75}},
+    {code:'BA17a',name:'人工氣道管內分泌物抽吸',price:75},
+    {code:'BA17b',name:'口腔內分泌物抽吸',price:65},
+    {code:'BA17c',name:'尿管及鼻胃管之清潔固定',price:50},
+    {code:'BA17d1',name:'血糖機驗血糖',price:50},
+    {code:'BA17d2',name:'甘油球通便',price:50},
+    {code:'BA17e',name:'依指示置入藥盒',price:50},
+    {code:'BA18',name:'安全看視',price:200},
+    {code:'BA20',name:'陪伴服務',price:175},
+    {code:'BA22',name:'巡視服務',price:130},
+    {code:'BA23',name:'協助洗頭',price:200},
+    {code:'BA24',name:'協助排泄',price:220}
+  ],
+  BB:[
+    {code:'BB01',name:'日照全日(第1型)',price:675},{code:'BB02',name:'日照半日(第1型)',price:340},
+    {code:'BB03',name:'日照全日(第2型)',price:840},{code:'BB04',name:'日照半日(第2型)',price:420},
+    {code:'BB05',name:'日照全日(第3型)',price:920},{code:'BB06',name:'日照半日(第3型)',price:460},
+    {code:'BB07',name:'日照全日(第4型)',price:1045},{code:'BB08',name:'日照半日(第4型)',price:525},
+    {code:'BB09',name:'日照全日(第5型)',price:1130},{code:'BB10',name:'日照半日(第5型)',price:565},
+    {code:'BB11',name:'日照全日(第6型)',price:1210},{code:'BB12',name:'日照半日(第6型)',price:605},
+    {code:'BB13',name:'日照全日(第7型)',price:1285},{code:'BB14',name:'日照半日(第7型)',price:645}
+  ],
+  BC:[
+    {code:'BC01',name:'家托全日(第1型)',price:625},{code:'BC02',name:'家托半日(第1型)',price:315},
+    {code:'BC03',name:'家托全日(第2型)',price:760},{code:'BC04',name:'家托半日(第2型)',price:380},
+    {code:'BC05',name:'家托全日(第3型)',price:785},{code:'BC06',name:'家托半日(第3型)',price:395},
+    {code:'BC07',name:'家托全日(第4型)',price:880},{code:'BC08',name:'家托半日(第4型)',price:440},
+    {code:'BC09',name:'家托全日(第5型)',price:960},{code:'BC10',name:'家托半日(第5型)',price:480},
+    {code:'BC11',name:'家托全日(第6型)',price:980},{code:'BC12',name:'家托半日(第6型)',price:490},
+    {code:'BC13',name:'家托全日(第7型)',price:1040},{code:'BC14',name:'家托半日(第7型)',price:520}
+  ],
+  BD:[
+    {code:'BD01',name:'社區式協助沐浴',price:200},
+    {code:'BD02',name:'社區式晚餐',price:150},
+    {code:'BD03',name:'社區式服務交通接送',price:115}
+  ],
+  C:[
+    {code:'CA07',name:'IADLs復能、ADLs復能照護',price:4500},
+    {code:'CA08',name:'個別化服務計畫(居家)',price:6000},
+    {code:'CB01a',name:'營養照護',price:4500},
+    {code:'CB02',name:'進食與吞嚥照護',price:9000},
+    {code:'CB03',name:'困擾行為照護',price:4500},
+    {code:'CB04',name:'臥床或長期活動受限照護',price:9000},
+    {code:'CC01',name:'居家環境安全或無障礙空間規劃',price:0,cc01:true},
+    {code:'CD02',name:'居家護理指導',price:6000}
+  ],
+  G:[
+    {code:'GA03',name:'日照中心喘息服務(全日)',price:1250,unit:'次'},
+    {code:'GA04',name:'日照中心喘息服務(半日)',price:625, unit:'次'},
+    {code:'GA05',name:'機構住宿式喘息服務',    price:2310,unit:'天'},
+    {code:'GA06',name:'小規模多機能-夜間喘息', price:2000,unit:'次'},
+    {code:'GA07',name:'巷弄長照站臨托(元/時)', price:170, unit:'小時'},
+    {code:'GA09',name:'居家喘息',               price:770, unit:'次'}
+  ]
+};
+
+// ★ BA15-2 / BA16-2 固定自付額（含50%自費部分）
+const SHARED_FIX={
+  'BA15-2':{1:97,2:101,3:112},
+  'BA16-2':{1:65,2:68,3:75}
+};
+function getSharedFixedCop(cat){
+  let t=0;
+  ['BA15-2','BA16-2'].forEach(code=>{
+    const ss=S.svc[code];
+    if(!ss||!ss.on||S.foreign) return;
+    const tbl=SHARED_FIX[code];
+    t+=ss.units*(tbl[cat]||tbl[1]);
+  });
+  return t;
+}
+function getSharedBudgetAmt(){
+  let t=0;
+  ['BA15-2','BA16-2'].forEach(code=>{t+=getAmt(code);});
+  return t;
+}
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+let S={level:0,cat:0,foreign:false,svc:{},trips:0};
+
+function initSvc(){
+  ['BA','BB','BC','BD','C','G'].forEach(g=>{
+    SVC[g].forEach(s=>{
+      if(!S.svc[s.code]) S.svc[s.code]={on:false,units:0,price:s.price};
+    });
+  });
+}
+initSvc();
+
+// ════════════════════════════════════════════
+// COMPUTE
+// ════════════════════════════════════════════
+function getAmt(code){
+  const s=S.svc[code];
+  if(!s||!s.on) return 0;
+  if(S.foreign&&code.startsWith('BA')) return 0;
+  // 共用補助項目：額度計算用原價
+  const svcDef=[...SVC.BA].find(x=>x.code===code);
+  const unitPrice=(svcDef&&svcDef.origPrice)?svcDef.origPrice:s.price;
+  return s.units*unitPrice;
+}
+
+function compute(){
+  const lv=S.level,cat=S.cat,fi=S.foreign;
+  let bcBgt=lv?LVL[lv].budget:0;
+  if(fi) bcBgt=Math.floor(bcBgt*.3);
+  const gBgt=!lv?0:(lv>=7?48510:32340);
+  let bcUsed=0,gUsed=0;
+  ['BA','BB','BC','BD','C'].forEach(g=>SVC[g].forEach(s=>{bcUsed+=getAmt(s.code);}));
+  SVC.G.forEach(s=>{gUsed+=getAmt(s.code);});
+  const cr=COPAY[cat]||0,tr=TCOPAY[cat]||0;
+
+  // ★ BA15-2/BA16-2 固定自付額（已含另一半全自費）
+  const sharedBdg=getSharedBudgetAmt();          // 計入額度的補助部分
+  const sharedCop=cat?getSharedFixedCop(cat):0;  // 固定自付額（含全自費半額）
+
+  // ★ 超出額度 → 全自費
+  const bcExcess=bcBgt>0?Math.max(0,bcUsed-bcBgt):0;
+  const bcWithin=bcUsed-bcExcess;
+  // 一般項目（排除BA15-2/BA16-2）套用 cr%
+  const normalWithin=Math.max(0,bcWithin-Math.min(sharedBdg,bcWithin));
+  const bcCopNormal=Math.round(normalWithin*cr);
+  const bcCop=bcCopNormal+sharedCop+bcExcess;
+
+  const gWithin=gBgt>0?Math.min(gUsed,gBgt):gUsed;
+  const gExcess=gBgt>0?Math.max(0,gUsed-gBgt):0;
+  const gCop=Math.round(gWithin*cr)+gExcess;
+
+  const trips=S.trips,tripTot=trips*TPRICE;
+  const tripWithin=Math.min(tripTot,TBGT);
+  const tripExcess=Math.max(0,tripTot-TBGT);
+  const tripCop=Math.round(tripWithin*tr)+tripExcess;
+  const tripGov=tripTot-tripCop;
+
+  return{
+    bcBgt,bcUsed,bcRem:bcBgt-bcUsed,bcOver:bcBgt>0&&bcUsed>bcBgt,
+    bcWithin,bcExcess,bcCop,bcCopNormal,sharedBdg,sharedCop,
+    gBgt,gUsed,gRem:gBgt-gUsed,gOver:gBgt>0&&gUsed>gBgt,
+    gWithin,gExcess,gCop,gCopBase:Math.round(gWithin*cr),
+    cr,tr,trips,tripTot,tripWithin,tripExcess,tripCop,tripGov,
+    totalCop:bcCop   // ★ G碼、D碼不計入自付額合計
+  };
+}
+
+// ════════════════════════════════════════════
+// RENDER SERVICES
+// ════════════════════════════════════════════
+function renderAll(){
+  renderGrp('BA','bod-ba',true);
+  renderGrp('BB','bod-bb',true);
+  renderGrp('BC','bod-bc',true);
+  renderGrp('BD','bod-bd',true);
+  renderGrp('C','bod-c',false);
+  renderGrp('G','bod-g',false);
+}
+
+function renderGrp(grp,cid,hasCalc){
+  const c=document.getElementById(cid);
+  if(!c) return;
+  c.innerHTML=SVC[grp].map(s=>rowHTML(s,grp,hasCalc)).join('');
+}
+
+function rowHTML(s,grp,hasCalc){
+  const ss=S.svc[s.code]||{on:false,units:0,price:s.price};
+  const isFO=S.foreign&&grp==='BA';
+  const amt=ss.on&&!isFO?ss.units*ss.price:0;
+  const isOn=ss.on&&!isFO;
+
+  // Price label
+  let pLabel;
+  if(s.cc01) pLabel='（手動輸入金額）';
+  else if(s.fixedCop){
+    const catNames={1:'第一類',2:'第二類',3:'第三類'};
+    const cop = S.cat ? s.fixedCop[S.cat] : null;
+    const copText = cop!=null
+      ? `自付額 <strong>$${cop}/單位</strong>（${catNames[S.cat]}）　共用補助50%`
+      : `自付額：第一類$${s.fixedCop[1]} / 第二類$${s.fixedCop[2]} / 第三類$${s.fixedCop[3]}　<span class="shared-tag">共用補助50%</span>`;
+    pLabel=copText;
+  }
+  else if(grp==='G'&&s.unit){
+    const gBgt=S.level?(S.level>=7?48510:32340):0;
+    const maxUse=gBgt>0?Math.floor(gBgt/s.price):0;
+    const maxStr=gBgt>0
+      ?`<span style="color:var(--OK);font-weight:700;">最多 ${maxUse} ${s.unit}/年</span>`
+      :`<span style="color:var(--DIS);">請先設定等級</span>`;
+    pLabel=`$${s.price.toLocaleString()}/${s.unit}　${maxStr}`;
+  }
+  else pLabel=`$${s.price.toLocaleString()}/單位`;
+
+  // For shared fixed-cop items, show self-pay amount instead of budget amount
+  const displayAmt = (s.fixedCop && S.cat && ss.on && !isFO)
+    ? ss.units * s.fixedCop[S.cat]
+    : amt;
+
+  const ba09html=s.ba09?`
+    <div class="ba09-opts">
+      <label><input type="radio" name="ba09t-${s.code}" value="2200" ${ss.price===2200?'checked':''} onchange="setBA09P('${s.code}',2200)"> 第一型 $2,200</label>
+      <label><input type="radio" name="ba09t-${s.code}" value="2500" ${ss.price===2500?'checked':''} onchange="setBA09P('${s.code}',2500)"> 第二型 $2,500</label>
+    </div>`:'';
+
+  const cc01html=s.cc01?`
+    <div class="cc01-price">
+      <span>金額 $</span>
+      <input type="number" value="${ss.price||0}" min="0" onchange="setCC01P('${s.code}',+this.value||0)">
+    </div>`:'';
+
+  const calcBtn=(hasCalc&&!s.cc01)?`<button class="calc-btn" onclick="openCalc('${s.code}')" ${!isOn?'disabled':''} title="試算單位數">🔢</button>`:'';
+
+  return `
+<div class="svc-row ${isOn?'on':''} ${isFO?'foreign-off':''}" id="row-${s.code}">
+  <input type="checkbox" class="svc-chk" ${isOn?'checked':''} ${isFO?'disabled':''}
+    onchange="togSvc('${s.code}',this.checked)">
+  <div class="svc-info">
+    <div class="svc-code">${s.code}</div>
+    <div class="svc-name">${s.name}</div>
+    <div class="svc-price">${pLabel}</div>
+    ${ba09html}${cc01html}
+  </div>
+  <div class="svc-right">
+    ${calcBtn}
+    <input type="number" class="u-inp" id="ui-${s.code}" value="${ss.units}" min="0"
+      ${!isOn?'disabled':''} onchange="setUnits('${s.code}',+this.value||0)">
+    <div class="svc-amt ${displayAmt===0?'z':''}" id="am-${s.code}">$${displayAmt.toLocaleString()}</div>
+  </div>
+</div>`;
+}
+
+// ════════════════════════════════════════════
+// UPDATE UI
+// ════════════════════════════════════════════
+function updAll(){
+  const b=compute();
+  const catLbls={1:'第一類(0%)',2:'第二類(5%)',3:'第三類(16%)'};
+  document.getElementById('hdr-cat').textContent=(S.cat&&S.level)?`${LVL[S.level].name} ${catLbls[S.cat]}`:'請設定';
+
+  // B+C card
+  const bcC=document.getElementById('bc-card');
+  bcC.className='bc'+(b.bcOver?' over':b.bcBgt>0&&b.bcUsed<=b.bcBgt?' ok':'');
+  document.getElementById('bc-amt').textContent=`$${b.bcUsed.toLocaleString()}`;
+  document.getElementById('bc-sub').textContent=b.bcBgt>0?`/ $${b.bcBgt.toLocaleString()}  ${b.bcOver?'⚠超出':'剩'+$f(b.bcRem)}`:'請先設定等級';
+
+  // G card
+  const gC=document.getElementById('g-card');
+  gC.className='bc'+(b.gOver?' over':b.gBgt>0&&b.gUsed<=b.gBgt?' ok':'');
+  document.getElementById('g-amt').textContent=`$${b.gUsed.toLocaleString()}`;
+  document.getElementById('g-sub').textContent=b.gBgt>0?`/ $${b.gBgt.toLocaleString()}  ${b.gOver?'⚠超出':'剩'+$f(b.gRem)}`:'請先設定等級';
+
+  // Cop card — only B+C excess matters for total
+  const hasExcess=b.bcExcess>0;
+  document.getElementById('cop-amt').textContent=`$${b.totalCop.toLocaleString()}`;
+  document.getElementById('cop-sub').textContent=
+    hasExcess ? '⚠ 含全自費項目' :
+    S.cat ? `B+C 自付額 ${(b.cr*100).toFixed(0)}%（G/D另計）` : '請先設定類別';
+  document.getElementById('cop-card').className='bc'+(hasExcess?' over':'');
+
+  // Group badges
+  const groups={ba:'BA',bb:'BB',bc:'BC',bd:'BD',c:'C',g:'G'};
+  Object.entries(groups).forEach(([id,grp])=>{
+    let t=0; SVC[grp].forEach(s=>{t+=getAmt(s.code);});
+    const el=document.getElementById('bdg-'+id);
+    if(el){el.textContent=`$${t.toLocaleString()}`;el.className='acc-badge'+(t>0?' used':'');}
+  });
+
+  const fa=document.getElementById('f-alert');
+  if(S.foreign){fa.classList.add('show');document.getElementById('f-limit').textContent=b.bcBgt.toLocaleString();}
+  else fa.classList.remove('show');
+
+  updTransport(b);
+  renderCopDetail(b);
+}
+
+function $f(n){return n>=0?'$'+n.toLocaleString():'−$'+Math.abs(n).toLocaleString();}
+
+// ════════════════════════════════════════════
+// COP DETAIL PANEL
+// ════════════════════════════════════════════
+let copDetailOpen=false;
+function togCopDetail(){
+  copDetailOpen=!copDetailOpen;
+  document.getElementById('cop-detail').classList.toggle('show',copDetailOpen);
+  document.getElementById('cop-toggle-btn').classList.toggle('open',copDetailOpen);
+}
+
+function renderCopDetail(b){
+  const el=document.getElementById('cop-detail-inner');
+  if(!S.level||!S.cat){el.innerHTML='<div class="cd-na">請先設定等級與身分別</div>';return;}
+  const crPct=(b.cr*100).toFixed(0)+'%';
+  const trPct=(b.tr*100).toFixed(0)+'%';
+  let html='';
+
+  // ── B+C 服務費 ──
+  html+=`<div class="cd-section">
+    <div class="cd-section-title">B+C 照顧及專業服務費</div>`;
+  if(b.bcUsed===0){
+    html+=`<div class="cd-row"><span class="cd-lbl">尚未選取服務</span><span class="cd-val">$0</span></div>`;
+  } else {
+    // ★ 逐項列出所有已選服務
+    const allBCSvc=[...SVC.BA,...SVC.BB,...SVC.BC,...SVC.BD,...SVC.C];
+    allBCSvc.forEach(s=>{
+      const ss=S.svc[s.code];
+      if(!ss||!ss.on) return;
+      if(S.foreign&&s.code.startsWith('BA')) return;
+      const bdgAmt=getAmt(s.code); // 計入額度的金額（共用項用原價）
+      if(bdgAmt===0) return;
+      // 顯示用標籤
+      let unitLabel=s.fixedCop?`$${s.origPrice}/單位（共用）`:`$${s.price.toLocaleString()}/單位`;
+      html+=`<div class="cd-row" style="padding:4px 0;font-size:13px;">
+        <div style="flex:1;min-width:0;">
+          <span style="font-family:monospace;font-weight:700;color:var(--P);font-size:12px;">${s.code}</span>
+          <span style="margin-left:5px;color:var(--T);">${s.name}</span>
+          <div style="color:var(--T2);font-size:12px;">${ss.units} 單位 × ${unitLabel}</div>
+        </div>
+        <span style="font-weight:700;color:var(--T);white-space:nowrap;margin-left:8px;">$${bdgAmt.toLocaleString()}</span>
+      </div>`;
+    });
+    // 分隔線
+    html+=`<div style="border-top:1.5px solid var(--BD);margin:6px 0;"></div>`;
+    html+=`<div class="cd-row" style="font-size:14px;">
+      <span class="cd-lbl">小計（計入額度）</span>
+      <span class="cd-val">$${b.bcUsed.toLocaleString()}</span>
+    </div>`;
+    html+=`<div style="border-top:1.5px solid var(--BD);margin:6px 0;"></div>`;
+
+    // 一般項目部分負擔計算
+    const normalAmt = b.bcUsed - b.sharedBdg;
+    if(normalAmt>0){
+      html+=`<div class="cd-row">
+        <div><div class="cd-lbl">一般服務費 × 部分負擔</div>
+        <div class="cd-formula">$${normalAmt.toLocaleString()} × ${crPct} → 額度內 $${Math.min(normalAmt,b.bcWithin-Math.min(b.sharedBdg,b.bcWithin)).toLocaleString()} × ${crPct}</div></div>
+        <span class="cd-val">$${b.bcCopNormal.toLocaleString()}</span>
+      </div>`;
+    }
+    // BA15-2 / BA16-2 固定自付額
+    ['BA15-2','BA16-2'].forEach(code=>{
+      const ss=S.svc[code];
+      if(!ss||!ss.on||S.foreign) return;
+      const svcDef=SVC.BA.find(s=>s.code===code);
+      if(!svcDef) return;
+      const cop=svcDef.fixedCop[S.cat];
+      const catNames={1:'第一類',2:'第二類',3:'第三類'};
+      html+=`<div class="cd-row">
+        <div><div class="cd-lbl">${svcDef.name}（固定自付）</div>
+        <div class="cd-formula">${ss.units} 單位 × $${cop}（${catNames[S.cat]}）= 補助半額${crPct}負擔＋另半額全自費</div></div>
+        <span class="cd-val">$${(ss.units*cop).toLocaleString()}</span>
+      </div>`;
+    });
+    if(b.bcExcess>0){
+      html+=`<div class="cd-excess">
+        <span>⚠ 超出額度 $${b.bcExcess.toLocaleString()}（總用 $${b.bcUsed.toLocaleString()}，額度 $${b.bcBgt.toLocaleString()}）→ 全自費</span>
+        <span class="cv">+$${b.bcExcess.toLocaleString()}</span>
+      </div>`;
+    }
+    html+=`<div class="cd-row" style="border-top:1px solid var(--BD);margin-top:4px;padding-top:6px;">
+      <span class="cd-lbl" style="font-weight:700;color:var(--T);">B+C 小計</span>
+      <span class="cd-val" style="color:var(--P);">$${b.bcCop.toLocaleString()}</span>
+    </div>`;
+  }
+  html+=`</div>`;
+
+  // ── G 喘息服務（參考，不計入自付額合計）──
+  html+=`<div class="cd-section" style="background:#f0faf4;border:1px dashed #a8d5b5;">
+    <div class="cd-section-title" style="color:#1a7a34;">G 喘息服務　<span style="font-weight:400;font-size:11px;color:#2a9a54;">【年度額度，不列入自付額合計】</span></div>`;
+  if(b.gUsed===0){
+    // 即使沒有使用，也顯示每項年度可用次數
+    html+=`<div class="cd-row"><span class="cd-lbl">尚未選取服務</span><span class="cd-val" style="color:var(--DIS);">—</span></div>`;
+    if(b.gBgt>0){
+      html+=`<div style="margin-top:6px;font-size:13px;color:#2a7a44;">`;
+      SVC.G.forEach(s=>{
+        const max=Math.floor(b.gBgt/s.price);
+        html+=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #c8e8d0;">
+          <span>${s.code} ${s.name}</span>
+          <span style="font-weight:700;white-space:nowrap;margin-left:8px;">最多 ${max} ${s.unit}/年</span>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+  } else {
+    // 已選項目顯示使用情況
+    html+=`<div class="cd-row">
+      <div><div class="cd-lbl">年度額度</div>
+      <div class="cd-formula">$${b.gBgt.toLocaleString()} / 年（${b.gOver?'⚠已超出':'剩 $'+(b.gBgt-b.gUsed).toLocaleString()}）</div></div>
+      <span class="cd-val">已用 $${b.gUsed.toLocaleString()}</span>
+    </div>`;
+    // 每個已勾選項目顯示已用次數與年度上限
+    SVC.G.forEach(s=>{
+      const ss=S.svc[s.code];
+      if(!ss||!ss.on) return;
+      const max=b.gBgt>0?Math.floor(b.gBgt/s.price):0;
+      html+=`<div class="cd-row">
+        <div><div class="cd-lbl">${s.code} ${s.name}</div>
+        <div class="cd-formula">$${s.price}/${s.unit}　年度上限 ${max} ${s.unit}</div></div>
+        <span class="cd-val" style="color:#1a7a34;">${ss.units} ${s.unit}</span>
+      </div>`;
+    });
+    if(b.cr>0){
+      html+=`<div class="cd-row" style="border-top:1px solid var(--BD);margin-top:4px;padding-top:6px;">
+        <div><div class="cd-lbl">試算自付額（${(b.cr*100).toFixed(0)}%）</div>
+        <div class="cd-formula">$${b.gWithin.toLocaleString()} × ${crPct}${b.gExcess>0?' + 超出 $'+b.gExcess.toLocaleString()+' 全自費':''}</div></div>
+        <span class="cd-val" style="color:#1a7a34;">$${b.gCop.toLocaleString()}</span>
+      </div>`;
+    }
+    if(b.gExcess>0){
+      html+=`<div class="cd-excess">⚠ 超出年度額度 $${b.gExcess.toLocaleString()} → 全自費<span class="cv">+$${b.gExcess.toLocaleString()}</span></div>`;
+    }
+  }
+  html+=`</div>`;
+
+  // ── D 交通接送（參考，不計入自付額合計）──
+  html+=`<div class="cd-section" style="background:#f5f0ff;border:1px dashed #b8a0d8;">
+    <div class="cd-section-title" style="color:#5a2d9a;">D 交通接送服務　<span style="font-weight:400;font-size:11px;color:#7a4dba;">【月額度，不列入自付額合計】</span></div>`;
+  if(b.trips===0){
+    html+=`<div class="cd-row"><span class="cd-lbl">尚未填入趟次</span><span class="cd-val">$0</span></div>`;
+  } else {
+    html+=`<div class="cd-row">
+      <div><div class="cd-lbl">月額度 $1,840（最多8趟）</div>
+      <div class="cd-formula">${b.trips} 趟 × $${TPRICE} = $${b.tripTot.toLocaleString()}${b.tripExcess>0?' ⚠超出月額度':''}</div></div>
+      <span class="cd-val">$${b.tripTot.toLocaleString()}</span>
+    </div>`;
+    html+=`<div class="cd-row">
+      <div><div class="cd-lbl">試算自付額（${(b.tr*100).toFixed(0)}%）</div>
+      <div class="cd-formula">${b.tripExcess>0?'額度內 $'+b.tripWithin.toLocaleString()+' × '+trPct+' + 超出 $'+b.tripExcess.toLocaleString()+' 全自費':'$'+b.tripTot.toLocaleString()+' × '+trPct}</div></div>
+      <span class="cd-val" style="color:#5a2d9a;">$${b.tripCop.toLocaleString()}</span>
+    </div>`;
+    if(b.tripExcess>0){
+      html+=`<div class="cd-excess">⚠ 超出月額度 $${b.tripExcess.toLocaleString()} → 全自費<span class="cv">+$${b.tripExcess.toLocaleString()}</span></div>`;
+    }
+  }
+  html+=`</div>`;
+
+  // ── 合計（僅 B+C）──
+  html+=`<div class="cd-total">
+    <div class="ct-lbl">B+C 自付額合計</div>
+    <div class="ct-val">$${b.totalCop.toLocaleString()}</div>
+  </div>`;
+  if(b.bcExcess>0){
+    html+=`<div style="background:#fde8e8;border-radius:8px;padding:8px 12px;margin-top:8px;font-size:13px;color:#922;line-height:1.6;">
+      ⚠ 含全自費 <strong>$${b.bcExcess.toLocaleString()}</strong>（超出B+C給付額度，政府不補助）
+    </div>`;
+  }
+  if(b.gCop>0||b.tripCop>0){
+    html+=`<div style="background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-top:6px;font-size:13px;color:#445;line-height:1.7;">
+      📋 另計參考：G 喘息自付 <strong>$${b.gCop.toLocaleString()}</strong>　D 交通自付 <strong>$${b.tripCop.toLocaleString()}</strong>
+    </div>`;
+  }
+  el.innerHTML=html;
+}
+
+function updTransport(b){
+  const dr=document.getElementById('d-result');
+  if(S.trips>0){
+    dr.style.display='block';
+    const pcts={1:'0%',2:'9%',3:'27%'};
+    document.getElementById('dt-total').textContent=`$${b.tripTot.toLocaleString()}`;
+    document.getElementById('dt-pct').textContent=S.cat?pcts[S.cat]:'—';
+    document.getElementById('dt-cop').textContent=`$${b.tripCop.toLocaleString()}`;
+    document.getElementById('dt-gov').textContent=`$${b.tripGov.toLocaleString()}`;
+    document.getElementById('dt-warn').style.display=b.tripTot>TBGT?'block':'none';
+  }else dr.style.display='none';
+}
+
+function updRow(code){
+  const s=S.svc[code];
+  const isFO=S.foreign&&code.startsWith('BA');
+  const isOn=s&&s.on&&!isFO;
+  // Find SVC definition for fixedCop check
+  const svcDef=[...SVC.BA,...SVC.BB,...SVC.BC,...SVC.BD,...SVC.C,...SVC.G].find(x=>x.code===code);
+  let displayAmt=0;
+  if(isOn){
+    displayAmt=(svcDef&&svcDef.fixedCop&&S.cat)
+      ? s.units*svcDef.fixedCop[S.cat]
+      : s.units*s.price;
+  }
+  const row=document.getElementById('row-'+code);
+  if(row){
+    row.classList.toggle('on',!!isOn);
+    const ui=document.getElementById('ui-'+code);
+    if(ui) ui.disabled=!isOn;
+    const cb=row.querySelector('.calc-btn');
+    if(cb) cb.disabled=!isOn;
+    const chk=row.querySelector('.svc-chk');
+    if(chk) chk.checked=!!isOn;
+  }
+  const am=document.getElementById('am-'+code);
+  if(am){am.textContent=`$${displayAmt.toLocaleString()}`;am.className='svc-amt'+(displayAmt===0?' z':'');}
+}
+
+// ════════════════════════════════════════════
+// EVENT HANDLERS
+// ════════════════════════════════════════════
+function setLevel(lv){
+  S.level=lv;
+  document.querySelectorAll('#lvl-pills .pill').forEach(p=>p.classList.toggle('sel',+p.dataset.lv===lv));
+  renderGrp('G','bod-g',false); // 重新渲染G碼，更新年度可用次數
+  updAll();
+}
+function setCat(c){
+  S.cat=c;
+  document.querySelectorAll('#cat-pills .pill').forEach(p=>p.classList.toggle('sel',+p.dataset.c===c));
+  updAll();
+}
+function setForeign(v){
+  S.foreign=v;
+  renderAll();
+  updAll();
+}
+function togSvc(code,on){
+  if(!S.svc[code]) S.svc[code]={on:false,units:0,price:0};
+  S.svc[code].on=on;
+  updRow(code);
+  updAll();
+}
+function setUnits(code,u){
+  if(!S.svc[code]) return;
+  S.svc[code].units=u;
+  updRow(code);
+  updAll();
+}
+function setBA09P(code,p){
+  if(!S.svc[code]) return;
+  S.svc[code].price=+p;
+  updRow(code);
+  updAll();
+}
+function setCC01P(code,p){
+  if(!S.svc[code]) return;
+  S.svc[code].price=p;
+  updRow(code);
+  updAll();
+}
+function chgTrip(d){
+  S.trips=Math.max(0,S.trips+d);
+  document.getElementById('trip-n').value=S.trips;
+  updAll();
+}
+function setTrip(v){S.trips=Math.max(0,v);updAll();}
+function doReset(){
+  if(!confirm('確定要重設所有服務項目及趟次嗎？')) return;
+  S.svc={};S.trips=0;
+  document.getElementById('trip-n').value=0;
+  initSvc();renderAll();updAll();
+}
+
+// ════════════════════════════════════════════
+// ACCORDION
+// ════════════════════════════════════════════
+function togAcc(id){
+  const hdr=document.querySelector(`#acc-${id} .acc-hdr`);
+  const bod=document.getElementById(`bod-${id}`);
+  if(!hdr||!bod) return;
+  const open=bod.classList.contains('open');
+  bod.classList.toggle('open',!open);
+  hdr.classList.toggle('open',!open);
+}
+
+// ════════════════════════════════════════════
+// VIEW NAVIGATION
+// ════════════════════════════════════════════
+function goView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nitem').forEach(n=>n.classList.remove('active'));
+  document.getElementById('v-'+id).classList.add('active');
+  document.getElementById('n-'+id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ════════════════════════════════════════════
+// CALCULATOR MODAL
+// ════════════════════════════════════════════
+let calcCode=null;
+const allB=[...SVC.BA,...SVC.BB,...SVC.BC,...SVC.BD];
+
+function openCalc(code){
+  const svc=allB.find(s=>s.code===code);
+  if(!svc) return;
+  calcCode=code;
+  document.getElementById('sh-name').textContent=svc.name;
+  document.getElementById('sh-code').textContent=
+    `${svc.code}  ·  $${svc.price.toLocaleString()}/單位${svc.shared50?' (共用補助50%)':''}`;
+  document.getElementById('c-times').value=1;
+  document.getElementById('c-days').value=3;
+  calcRes();
+  document.getElementById('calc-overlay').classList.add('show');
+}
+function closeCalc(){
+  document.getElementById('calc-overlay').classList.remove('show');
+  calcCode=null;
+}
+function stepC(field,d){
+  const el=document.getElementById(field==='t'?'c-times':'c-days');
+  const mn=+el.min||1,mx=+el.max||10;
+  el.value=Math.min(mx,Math.max(mn,(+el.value||1)+d));
+  calcRes();
+}
+function calcRes(){
+  const t=+document.getElementById('c-times').value||1;
+  const d=+document.getElementById('c-days').value||1;
+  // Formula: min(ceil(t × d × 4.5), t × 31)
+  const result=Math.min(Math.ceil(t*d*4.5),t*31);
+  document.getElementById('cr-val').textContent=result+' 單位';
+  let formula;
+  if(d===7) formula=`${t} 次 × 31 天（每日服務取月天數）= ${t*31}`;
+  else formula=`${t} 次 × ${d} 天 × 4.5 = ${(t*d*4.5).toFixed(1)} → 無條件進位`;
+  document.getElementById('cr-formula').textContent=formula;
+}
+function applyCalc(){
+  if(!calcCode) return;
+  const t=+document.getElementById('c-times').value||1;
+  const d=+document.getElementById('c-days').value||1;
+  const result=Math.min(Math.ceil(t*d*4.5),t*31);
+  // ★ 自動勾選服務項目
+  if(!S.svc[calcCode]) S.svc[calcCode]={on:false,units:0,price:0};
+  S.svc[calcCode].on=true;
+  S.svc[calcCode].units=result;
+  // 同步 UI
+  const ui=document.getElementById('ui-'+calcCode);
+  if(ui) ui.value=result;
+  updRow(calcCode);
+  updAll();
+  closeCalc();
+}
+document.getElementById('calc-overlay').addEventListener('click',function(e){
+  if(e.target===this) closeCalc();
+});
+
+// ════════════════════════════════════════════
+// PWA SETUP
+// ════════════════════════════════════════════
+const mfst={
+  name:'長照服務確認單試算',short_name:'長照試算',
+  description:'中正高齡居家長照服務確認單試算工具',
+  start_url:'.',display:'standalone',orientation:'portrait',
+  theme_color:'#0b5085',background_color:'#edf2f7',
+  icons:[{
+    src:`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='24' fill='%230b5085'/><text x='96' y='130' font-size='96' text-anchor='middle'>🏠</text></svg>`,
+    sizes:'192x192',type:'image/svg+xml'
+  }]
+};
+try{
+  const b=new Blob([JSON.stringify(mfst)],{type:'application/manifest+json'});
+  document.getElementById('pwa-manifest').href=URL.createObjectURL(b);
+}catch(e){}
+
+if('serviceWorker' in navigator){
+  const sw=`
+    const C='ltc-v3';
+    self.addEventListener('install',e=>{self.skipWaiting();});
+    self.addEventListener('activate',e=>{
+      e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));
+    });
+    self.addEventListener('fetch',e=>{
+      e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
+        const rc=res.clone();caches.open(C).then(c=>c.put(e.request,rc));return res;
+      })));
+    });
+  `;
+  try{
+    const b=new Blob([sw],{type:'text/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(b));
+  }catch(e){}
+}
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+renderAll();
+updAll();
+</script>
+</body>
+</html>
